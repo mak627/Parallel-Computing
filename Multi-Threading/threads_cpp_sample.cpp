@@ -5,14 +5,25 @@
 using namespace std;
 using namespace std::chrono;
 
-uint sum1=0, sum2=0;
+struct node{
+	int value;
+	node *next;
+};
 
-void findSum1(uint x, uint y){
-	for(uint i=x;i<=y;++i)	sum1 += i;
+struct node *head = NULL;
+
+void insert_node(int new_val){
+	struct node* new_node = new node;
+	new_node->value = new_val;
+	new_node->next = head;
+	head = new_node;
 }
 
-void findSum2(uint x, uint y){
-	for(uint i=x;i<=y;++i)	sum2 += i;
+void delete_node(){
+	struct node* temp = new node;
+	temp = head;
+	head = head->next;
+	delete temp;
 }
 
 int main(){
