@@ -10,39 +10,80 @@ struct node{
 	node *next;
 };
 
-struct node *head = NULL;
+class singly_linked_list{
+		struct node *head,*tail;
+	public:
+		singly_linked_list(){
+			head = NULL;
+			tail = NULL;	
+		}
+		void insert_node(int new_val);
+		void delete_node();
+		void show_list();
+};
 
-void insert_node(int new_val){
-	struct node* new_node = new node;
+//new node is inserted at the end of the SLL
+void singly_linked_list::insert_node(int new_val){
+	struct node *new_node = new node;
 	new_node->value = new_val;
-	new_node->next = head;
-	head = new_node;
+	new_node->next = NULL;
+	if(head==NULL){
+		head = new_node;
+		tail = head;
+		new_node = NULL;
+	}
+	else{
+		tail->next = new_node;
+		tail = new_node;
+		new_node = NULL;	
+	}
 }
 
-void delete_node(){
-	struct node* temp = new node;
+//deletion happens at the beginning of the SLL
+void singly_linked_list::delete_node(){
+	struct node *temp = new node;
 	temp = head;
 	head = head->next;
 	delete temp;
 }
 
+//showing the singly linked list
+void singly_linked_list::show_list(){
+	struct node *temp = new node;
+	temp = head;
+	while(temp != NULL){
+		cout << temp->value << " ";
+		temp = temp->next;	
+	}
+	cout << endl;
+}
+
 int main(){
-	uint x=0, y=10000000;
+	
 	auto start = high_resolution_clock::now();
+	
+	singly_linked_list sll1;	
+	//Sequential Execution of two functions
+	//sll1.insert_node(1);
+	//sll1.insert_node(2);
+	//sll1.insert_node(3);
+	//sll1.delete_node();
+
 	//Parallel Execution of two functions using threads
-	thread t1(findSum1,x,y);
-	thread t2(findSum2,x,y);
+	//*****thread safety remains to be implemented*****
+	thread t1(&singly_linked_list::insert_node,&sll1,1);
+	thread t2(&singly_linked_list::insert_node,&sll1,2);
+	thread t3(&singly_linked_list::insert_node,&sll1,3);
+	thread t4(&singly_linked_list::delete_node,&sll1);
 	t1.join();
 	t2.join();
-	//Sequential Execution of two functions
-	//findSum1(x,y);
-	//findSum2(x,y);
+	t3.join();
+	t4.join();
+	sll1.show_list();
+	
 	auto stop = high_resolution_clock::now();
 	auto time_diff = stop - start;
-
-	cout << "Sum1: " << sum1 << endl;
-	cout << "Sum2: " << sum2 << endl;
-	cout << "Tot_Exec_Time:" << duration<double,milli> (time_diff).count() << "ms" << endl;
+	cout << "Tot_Exec_Time:" << duration<double,micro> (time_diff).count() << "us" << endl;
 
 	return 0;
 }
