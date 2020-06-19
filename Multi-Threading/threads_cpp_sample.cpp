@@ -1,10 +1,11 @@
 #include <iostream>
 #include <thread>
+#include <mutex>
 #include <chrono>
 
 using namespace std;
 using namespace std::chrono;
-
+std::mutex mtx;
 struct node{
 	int value;
 	node *next;
@@ -33,8 +34,10 @@ void singly_linked_list::insert_node(int new_val){
 		new_node = NULL;
 	}
 	else{
+		mtx.lock();
 		new_node->next = head;
 		head = new_node;
+		mtx.unlock();
 		new_node = NULL;	
 	}
 }
@@ -42,9 +45,11 @@ void singly_linked_list::insert_node(int new_val){
 //deletion happens at the beginning of the SLL
 void singly_linked_list::delete_node(){
 	struct node *temp = new node;
+	mtx.lock();
 	temp = head;
 	head = head->next;
 	delete temp;
+	mtx.unlock();
 }
 
 //showing the singly linked list
