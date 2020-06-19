@@ -22,19 +22,19 @@ class singly_linked_list{
 		void show_list();
 };
 
-//new node is inserted at the end of the SLL
+//new node is inserted at the beginning of the SLL
 void singly_linked_list::insert_node(int new_val){
 	struct node *new_node = new node;
 	new_node->value = new_val;
-	new_node->next = NULL;
 	if(head==NULL){
+		new_node->next = NULL;
 		head = new_node;
 		tail = head;
 		new_node = NULL;
 	}
 	else{
-		tail->next = new_node;
-		tail = new_node;
+		new_node->next = head;
+		head = new_node;
 		new_node = NULL;	
 	}
 }
