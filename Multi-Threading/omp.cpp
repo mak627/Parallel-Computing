@@ -28,6 +28,6 @@ t2 = omp_get_wtime();
 //auto stop = high_resolution_clock::now();
 //auto time_diff = stop - start;
 //cout << "Tot_Exec_Time:" << duration<double,micro> (time_diff).count() << "us" << endl;
-cout << (t2-t1)*1000000 << "ms" << endl;
+cout << (t2-t1)*1000 << "ms" << endl;
 return 0;
 }
