@@ -31,10 +31,17 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
   //allocate arrays to hold old and new scores for each node
   double* score_old = (double*) malloc(numNodes * sizeof(double));
   double* score_new = (double*) malloc(numNodes * sizeof(double));
+  int* sink_nodes = (int*) malloc(numNodes * sizeof(int));
+  int num_sink_nodes = 0;
 
   //score is distrubuted evenly at the beginning
+  // Also identify the sink nodes
   for (int i = 0; i < numNodes; ++i) {
     score_old[i] = equal_prob;
+    if (outgoing_size(g, i) == 0) {
+      sink_nodes[num_sink_nodes] = i;
+      num_sink_nodes++;
+    }
   }
   bool converged = false;
   
@@ -67,9 +74,16 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
      }
    */
     while(!converged){
-        // compute score_new[vi] for all nodes vi
+        
 	double global_diff = 0.0;
-	#pragma omp parallel for
+	// distribute the probability scores due to sink nodes
+	double sink_nodes_prob = 0.;
+	#pragma omp parallel for num_threads(2)
+    	for (int i = 0; i < num_sink_nodes; ++i) {
+        	sink_nodes_prob += score_old[sink_nodes[i]] * damping / numNodes;
+    	}
+	// compute score_new[vi] for all nodes vi
+	#pragma omp parallel for num_threads(2)
 	for (int i = 0; i < numNodes; ++i) {
           score_new[i] = 0.0;
           int start_edge = g->incoming_starts[i];
@@ -85,16 +99,17 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
         // include damping
         score_new[i] = (damping * score_new[i]) + (1.0 - damping) / numNodes;
         
-	/*** need to account for sink nodes i.e. nodes with no outgoing edges here ***/
+	// account for sink nodes i.e. nodes with no outgoing edges
+	score_new[i] += sink_nodes_prob;
 	
 	global_diff += std::abs(score_new[i] - score_old[i]);
         }
-    converged = (global_diff < convergence);
+    	converged = (global_diff < convergence);
 
-    // swap new and old pagerank scores
-    double* tmp = score_new;
-    score_new = score_old;
-    score_old = tmp;
+    	// swap new and old pagerank scores
+    	double* tmp = score_new;
+    	score_new = score_old;
+    	score_old = tmp;
     }
     for (int i = 0; i < numNodes; ++i) {
     solution[i] = score_old[i];
