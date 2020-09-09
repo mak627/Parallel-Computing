@@ -36,7 +36,7 @@
 #include <ctime>
 #include <cstring>
 
-
+#define thres_par 500000
 
 /**
   * helper routine: check if array is sorted correctly
@@ -116,12 +116,23 @@ void MsSerial(int *array, int *tmp, const size_t size) {
 void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end) {
 	if (begin < (end - 1)) {
 		const long half = (begin + end) / 2;
-		#pragma omp task default(none) shared(array,tmp,inplace) firstprivate(begin,half)
-		{parallleMergeSort(array, tmp, inplace, begin, half);}
-		#pragma omp task default(none) shared(array,tmp,inplace) firstprivate(half,end)
-		{parallleMergeSort(array, tmp, inplace, half, end);}
-		#pragma omp taskwait
-		MsMergeSequential(array, tmp, begin, half, half, end, begin);
+		if (half <= thres_par) {
+		    MsSequential(array, tmp, inplace, begin, end);
+		} else {
+		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(begin,half)
+		    {parallleMergeSort(array, tmp, !inplace, begin, half);}
+		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(half,end)
+		    {parallleMergeSort(array, tmp, !inplace, half, end);}
+		    #pragma omp taskwait
+		    //MsMergeSequential(tmp, array, begin, half, half, end, begin);
+		    if (inplace) {
+			MsMergeSequential(array, tmp, begin, half, half, end, begin);
+		    } else {
+			MsMergeSequential(tmp, array, begin, half, half, end, begin);
+		    }
+		}
+	} else if (!inplace) {
+		tmp[begin] = array[begin];
 	}
 }
 
