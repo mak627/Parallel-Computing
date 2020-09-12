@@ -36,7 +36,7 @@
 #include <ctime>
 #include <cstring>
 
-#define thres_par 500000
+#define thres_par 100000
 
 /**
   * helper routine: check if array is sorted correctly
@@ -116,7 +116,7 @@ void MsSerial(int *array, int *tmp, const size_t size) {
 void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end) {
 	if (begin < (end - 1)) {
 		const long half = (begin + end) / 2;
-		if (half <= thres_par) {
+		if (end-begin < thres_par) {
 		    MsSequential(array, tmp, inplace, begin, end);
 		} else {
 		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(begin,half)
