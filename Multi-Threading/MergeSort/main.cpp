@@ -38,6 +38,10 @@
 
 #define thres_par 100000
 
+using namespace std;
+
+int num_func_calls=0;
+
 /**
   * helper routine: check if array is sorted correctly
   */
@@ -114,9 +118,18 @@ void MsSerial(int *array, int *tmp, const size_t size) {
 /*** Parallel MergeSort using OpenMP ***/
 
 void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end) {
+
+	int threads = omp_get_num_threads();
+	//cout << "Threads: " << threads << endl;
+	#pragma omp atomic update
+	  num_func_calls++;
 	if (begin < (end - 1)) {
 		const long half = (begin + end) / 2;
-		if (end-begin < thres_par) {
+		double recur_depth = log2(num_func_calls);
+		//cout << num_func_calls << " function calls" << endl;
+		//cout << round(recur_depth) << endl;
+		//if (end-begin < thres_par) {
+		if (round(recur_depth) > (threads -1 )) {
 		    MsSequential(array, tmp, inplace, begin, end);
 		} else {
 		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(begin,half)
@@ -179,8 +192,8 @@ int main(int argc, char* argv[]) {
 		printf("Sorting %zu elements of type int (%f MiB)...\n", stSize, dSize);
 
 		gettimeofday(&t1, NULL);
-		//MsSerial(data, tmp, stSize);
-		MsParallel(data, tmp, stSize);
+		MsSerial(data, tmp, stSize);
+		//MsParallel(data, tmp, stSize);
 		gettimeofday(&t2, NULL);
 		etime = (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_usec - t1.tv_usec) / 1000;
 		etime = etime / 1000;
