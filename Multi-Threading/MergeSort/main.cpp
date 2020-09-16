@@ -40,8 +40,6 @@
 
 using namespace std;
 
-int num_func_calls=0;
-
 /**
   * helper routine: check if array is sorted correctly
   */
@@ -117,32 +115,25 @@ void MsSerial(int *array, int *tmp, const size_t size) {
 /********* My Changes Begin Here *********/
 /*** Parallel MergeSort using OpenMP ***/
 
-void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end) {
+void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end, int recur_depth) {
 
-	int threads = omp_get_num_threads();
-	//cout << "Threads: " << threads << endl;
-	#pragma omp atomic update
-	  num_func_calls++;
 	if (begin < (end - 1)) {
 		const long half = (begin + end) / 2;
-		double recur_depth = log2(num_func_calls);
-		//cout << num_func_calls << " function calls" << endl;
-		//cout << round(recur_depth) << endl;
 		//if (end-begin < thres_par) {
-		if (round(recur_depth) > (threads -1 )) {
-		    MsSequential(array, tmp, inplace, begin, end);
+		if (recur_depth >= 0) {
+		    #pragma omp task default(none) shared(array,tmp,inplace,recur_depth) firstprivate(begin,half)
+		    {parallleMergeSort(array, tmp, !inplace, begin, half, recur_depth-1);}
+		    #pragma omp task default(none) shared(array,tmp,inplace,recur_depth) firstprivate(half,end)
+		    {parallleMergeSort(array, tmp, !inplace, half, end, recur_depth-1);}
+		#pragma omp taskwait
 		} else {
-		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(begin,half)
-		    {parallleMergeSort(array, tmp, !inplace, begin, half);}
-		    #pragma omp task default(none) shared(array,tmp,inplace) firstprivate(half,end)
-		    {parallleMergeSort(array, tmp, !inplace, half, end);}
-		    #pragma omp taskwait
-		    //MsMergeSequential(tmp, array, begin, half, half, end, begin);
-		    if (inplace) {
-			MsMergeSequential(array, tmp, begin, half, half, end, begin);
-		    } else {
-			MsMergeSequential(tmp, array, begin, half, half, end, begin);
-		    }
+		    MsSequential(array, tmp, !inplace, begin, half);
+		    MsSequential(array, tmp, !inplace, half, end);
+		}
+		if (inplace) {
+		    MsMergeSequential(array, tmp, begin, half, half, end, begin);
+		} else {
+		    MsMergeSequential(tmp, array, begin, half, half, end, begin);
 		}
 	} else if (!inplace) {
 		tmp[begin] = array[begin];
@@ -151,11 +142,16 @@ void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end)
 
 void MsParallel(int *array, int *tmp, const size_t size){
 
-  #pragma omp parallel default(none) shared(array,tmp)
+  #pragma omp parallel default(shared)
   {
     #pragma omp single nowait
     {
-      parallleMergeSort(array, tmp, true, 0, size);
+      int threads = omp_get_num_threads();
+      cout << "No. of threads: " << threads << endl;
+      double rd = log2(threads * 8);
+      int recur_depth = round(rd);
+      cout << recur_depth << endl;
+      parallleMergeSort(array, tmp, true, 0, size, recur_depth);
     }
   } 
 }
@@ -192,8 +188,8 @@ int main(int argc, char* argv[]) {
 		printf("Sorting %zu elements of type int (%f MiB)...\n", stSize, dSize);
 
 		gettimeofday(&t1, NULL);
-		MsSerial(data, tmp, stSize);
-		//MsParallel(data, tmp, stSize);
+		//MsSerial(data, tmp, stSize);
+		MsParallel(data, tmp, stSize);
 		gettimeofday(&t2, NULL);
 		etime = (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_usec - t1.tv_usec) / 1000;
 		etime = etime / 1000;
