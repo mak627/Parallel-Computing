@@ -120,7 +120,7 @@ void parallleMergeSort(int *array, int *tmp, bool inplace, long begin, long end,
 	if (begin < (end - 1)) {
 		const long half = (begin + end) / 2;
 		//if (end-begin < thres_par) {
-		if (recur_depth >= 0) {
+		if (recur_depth > 0) {
 		    #pragma omp task default(none) shared(array,tmp,inplace,recur_depth) firstprivate(begin,half)
 		    {parallleMergeSort(array, tmp, !inplace, begin, half, recur_depth-1);}
 		    #pragma omp task default(none) shared(array,tmp,inplace,recur_depth) firstprivate(half,end)
@@ -148,7 +148,7 @@ void MsParallel(int *array, int *tmp, const size_t size){
     {
       int threads = omp_get_num_threads();
       cout << "No. of threads: " << threads << endl;
-      double rd = log2(threads * 8);
+      double rd = log2(threads * 3);
       int recur_depth = round(rd);
       cout << recur_depth << endl;
       parallleMergeSort(array, tmp, true, 0, size, recur_depth);
