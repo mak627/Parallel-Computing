@@ -112,6 +112,7 @@ void MsSerial(int *array, int *tmp, const size_t size) {
 
 	MsSequential(array, tmp, true, 0, size);
 }
+
 /********* My Changes Begin Here *********/
 /*** Parallel MergeSort using OpenMP ***/
 
@@ -148,9 +149,9 @@ void MsParallel(int *array, int *tmp, const size_t size){
     {
       int threads = omp_get_num_threads();
       cout << "No. of threads: " << threads << endl;
-      double rd = log2(threads * 3);
+      double rd = log2(threads * 5);
       int recur_depth = round(rd);
-      cout << recur_depth << endl;
+      cout << "Recursive Depth: " << recur_depth << endl;
       parallleMergeSort(array, tmp, true, 0, size, recur_depth);
     }
   } 
