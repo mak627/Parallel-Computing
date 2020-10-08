@@ -11,6 +11,7 @@
 #include "../common/CycleTimer.h"
 #include "../common/graph.h"
 
+using namespace std;
 
 // pageRank --
 //
@@ -23,23 +24,22 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
 {
 
 
-  // initialize vertex weights to uniform probability. Double
-  // precision scores are used to avoid underflow for large graphs
+  // initialize vertex weights to uniform probability.
 
   int numNodes = num_nodes(g);
   double equal_prob = 1.0 / numNodes;
   //allocate arrays to hold old and new scores for each node
   double* score_old = (double*) malloc(numNodes * sizeof(double));
   double* score_new = (double*) malloc(numNodes * sizeof(double));
-  int* sink_nodes = (int*) malloc(numNodes * sizeof(int));
+  Vertex* sinkNodes = (Vertex*) malloc(numNodes * sizeof(double));
   int num_sink_nodes = 0;
 
-  //score is distrubuted evenly at the beginning
+  // score is distrubuted evenly among all the nodes at the beginning
   // Also identify the sink nodes
   for (int i = 0; i < numNodes; ++i) {
     score_old[i] = equal_prob;
     if (outgoing_size(g, i) == 0) {
-      sink_nodes[num_sink_nodes] = i;
+      sinkNodes[num_sink_nodes] = i;
       num_sink_nodes++;
     }
   }
@@ -76,34 +76,44 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
     while(!converged){
         
 	double global_diff = 0.0;
-	// distribute the probability scores due to sink nodes
-	double sink_nodes_prob = 0.;
-	#pragma omp parallel for num_threads(2)
-    	for (int i = 0; i < num_sink_nodes; ++i) {
-        	sink_nodes_prob += score_old[sink_nodes[i]] * damping / numNodes;
+	int nthreads = omp_get_max_threads();
+	double local_sink_prob[nthreads];
+        double local_diff[nthreads];
+	for (int i = 0; i < nthreads; ++i) {
+      	    local_sink_prob[i] = 0.0;
+      	    local_diff[i] = 0.0;
     	}
-	// compute score_new[vi] for all nodes vi
-	#pragma omp parallel for num_threads(2)
+	// distribute the probability scores due to sink nodes
+	double sink_nodes_prob = 0.0;
+	#pragma omp parallel for 
+    	for (int i = 0; i < num_sink_nodes; ++i) {
+            local_sink_prob[omp_get_thread_num()] += score_old[sinkNodes[i]] * damping / numNodes;
+    	}
+	for (int i = 0; i < nthreads; i++) {
+      	    sink_nodes_prob += local_sink_prob[i];
+    	}
+	// compute new scores for all nodes
+	#pragma omp parallel for
 	for (int i = 0; i < numNodes; ++i) {
           score_new[i] = 0.0;
-          int start_edge = g->incoming_starts[i];
-          int end_edge = (i == g->num_nodes - 1)
-                           ? g->num_edges
-                           : g->incoming_starts[i + 1];
-	  int num_neighbours = end_edge - start_edge;
-	  for (int neighbour = start_edge; neighbour < end_edge; neighbour++) {
-            int incoming_vertex = g->incoming_edges[neighbour];
-	    score_new[i] += score_old[incoming_vertex] / num_neighbours;
-	  }
+          int num_in_edges = incoming_size(g, i);
+      	  const Vertex* varray = incoming_begin(g, i);
+          for (int j = 0; j < num_in_edges; ++j) {
+            int incoming_vertex = varray[j];
+            score_new[i] += score_old[incoming_vertex] / outgoing_size(g, incoming_vertex);
+          }
 
         // include damping
         score_new[i] = (damping * score_new[i]) + (1.0 - damping) / numNodes;
         
 	// account for sink nodes i.e. nodes with no outgoing edges
 	score_new[i] += sink_nodes_prob;
-	
-	global_diff += std::abs(score_new[i] - score_old[i]);
+	local_diff[omp_get_thread_num()] += std::abs(score_new[i] - score_old[i]);
         }
+	
+	for (int i = 0; i < nthreads; i++) {
+      	    global_diff += local_diff[i];
+    	}
     	converged = (global_diff < convergence);
 
     	// swap new and old pagerank scores
@@ -112,8 +122,9 @@ void pageRank(Graph g, double* solution, double damping, double convergence)
     	score_old = tmp;
     }
     for (int i = 0; i < numNodes; ++i) {
-    solution[i] = score_old[i];
+        solution[i] = score_old[i];
     }
     free(score_old);
     free(score_new);
+    free(sinkNodes);
 }
